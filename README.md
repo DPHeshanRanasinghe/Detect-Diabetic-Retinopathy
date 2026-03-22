@@ -41,8 +41,6 @@ The model predicts DR severity on a 0–4 ordinal scale:
 aptos2019-blindness-detection/
 │
 ├── notebook.ipynb              # Main training notebook
-├── best_model.pth              # Saved best model checkpoint
-├── submission.csv              # Kaggle submission file
 └── README.md
 ```
 
@@ -199,9 +197,6 @@ The following improvements are recommended to push performance toward and beyond
 **5-Fold Cross Validation + Ensemble**
 The most reliable way to improve score. Train one model per fold and average all 5 models' raw predictions before rounding. Each model sees a different 80% of data — averaging cancels individual model errors. Expected gain: +0.005–0.015 QWK.
 
-**Test Time Augmentation (TTA)**
-At inference, run each test image through multiple augmented versions (horizontal flip, vertical flip, rotations) and average the predictions. No additional training required. Expected gain: +0.005–0.010 QWK.
-
 **Larger Backbone**
 EfficientNet-B5 or B6 instead of B4. Larger models extract richer features at the cost of more memory and training time. Expected gain: +0.005–0.010 QWK.
 
@@ -210,31 +205,8 @@ EfficientNet-B5 or B6 instead of B4. Larger models extract richer features at th
 **Pre-save Preprocessed Images to Disk**
 Currently preprocessing runs on CPU for every image every batch, creating a data loading bottleneck that keeps the GPU underutilized. Saving preprocessed images to disk once before training would significantly speed up epoch time and allow `num_workers` to be pushed higher.
 
-**Optimized Threshold Finding**
-Instead of simply rounding regression outputs to integers, find the optimal thresholds on the validation set using a grid search. Because QWK is non-symmetric, the ideal cut points between classes are rarely exactly at 0.5, 1.5, 2.5, 3.5. Expected gain: +0.003–0.008 QWK.
-
 **Cosine Annealing with Warm Restarts (SGDR)**
 Replace the current single-cycle cosine scheduler with warm restarts (`CosineAnnealingWarmRestarts`). The periodic LR spikes help escape local minima and can find better solutions than a single monotonic decay.
-
-**External Pretraining Data**
-The 2019 competition allowed use of the 2015 EyePACS dataset (~88,000 images). Pretraining on EyePACS then fine-tuning on APTOS gives the model vastly more retinal image experience before seeing the target dataset.
-
-### Lower Impact / Experimental
-
-**Mixup / CutMix Augmentation**
-Blend pairs of training images and their labels to create synthetic training examples. Particularly useful for the minority classes.
-
-**Ordinal Regression Loss**
-Replace SmoothL1 with a dedicated ordinal regression loss (e.g. CORN or SORD) that explicitly models the ordered nature of the DR grades. May better capture the ordinal structure than treating it as pure regression.
-
-**Attention Mechanisms**
-Add a spatial attention module (CBAM or SE blocks) on top of the EfficientNet features to help the model focus on diagnostically relevant regions like the optic disc and macula rather than attending equally to all spatial locations.
-
-**Grad-CAM Visualization**
-Implement Gradient-weighted Class Activation Mapping to visualize which retinal regions the model focuses on when making predictions. Useful both for debugging and for clinical interpretability — making the model's decisions explainable to ophthalmologists.
-
-**Multi-scale Inference**
-Run inference at multiple image resolutions (e.g. 320, 384, 448) and average the predictions. Captures both fine-grained local features and global retinal structure.
 
 ---
 
